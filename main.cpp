@@ -1,7 +1,6 @@
 // TODO:
 //
 // Add a template example type (eg: ArrayElement<T>)
-// Fix the logic
 // Check if the types (concrete or abstract) are in the right place
 // See Design Patterns book and SO questions
 
@@ -57,24 +56,7 @@ public:
     virtual void ProcessArrayElement(const ArrayElement& element) = 0;
     virtual void ProcessStringElement(const StringElement& element) = 0;
 
-    // provided for use with
-    // std::for_each(<element list>.begin(), <element list>.end(), <concrete visitor>);
-    
-    /*
-    void operator() (AbstractElement &element)
-    {
-        element.Accept(*this);
-    }
-    */
-
-    /*void operator() (AbstractElement &element)
-    {
-        element.Accept(visitor_type);
-    }
-    */
 };
-
-
 
 
 class SingleElement : public AbstractElement
@@ -391,6 +373,8 @@ private:
 int main(int argc, char *argv[])
 {
 
+    // Initialize some stuff
+
     std::vector<double> initial_values{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
 
     std::list<SingleElement> single_element_list;
@@ -398,6 +382,8 @@ int main(int argc, char *argv[])
     std::transform(initial_values.cbegin(), initial_values.cend(),
         std::back_inserter(single_element_list), [](auto v){return SingleElement(v);});
 
+    // This could be done in a similar way using transform,
+    // as above
     std::list<ArrayElement> array_element_list
     {
         ArrayElement({1.0}),
@@ -416,15 +402,21 @@ int main(int argc, char *argv[])
     // Process SingleElement list
     ///////////////////////////////
 
+    // Adapter class (functor)
     class ForEachAdapter
     {
     public:
 
+        // The polymorhpism is retained in the member
+        // variable reference-to-visitor
         ForEachAdapter(AbstractVisitor& visitor_type)
             : visitor_type(visitor_type)
         {
         }
 
+        // The purpose of this class is simply to convert
+        // the function call operator into a call to
+        // element.Accept()
         void operator() (AbstractElement &element)
         {
             element.Accept(visitor_type);
@@ -436,12 +428,23 @@ int main(int argc, char *argv[])
 
     };
 
+    // Each block of code which uses the Visitor classes is enclosed
+    // in a try-catch block. An exception is only thrown when the XOR
+    // Visitor is applied to the SingleElement or ArrayElement types.
+
     try
     {
-        /*for(auto element : single_element_list)
-        {
-            element.Accept(sum_visitor);
-        }*/
+        // This can also be done using a standard
+        // range-based for-auto loop
+        //
+        //for(auto element : single_element_list)
+        //{
+        //    element.Accept(sum_visitor);
+        //}
+
+        // Here we use the adapter class with for_each, however
+        // this can also be done using a lambda function.
+        // See below for an example of how to do that
         ForEachAdapter adapter(sum_visitor);
         std::for_each(single_element_list.begin(), single_element_list.end(), adapter);
     }
@@ -452,12 +455,11 @@ int main(int argc, char *argv[])
 
     try
     {
-        /*for(auto element : single_element_list)
-        {
-            element.Accept(multiply_visitor);
-        }*/
-        //ForEachAdapter adapter(multiply_visitor);
-        std::for_each(single_element_list.begin(), single_element_list.end(), /*adapter*/
+        // This version uses for_each in combination with a lambda
+        // The lambda accomplishes the same thing as the functor,
+        // however the functor is probably easier to understand
+        // for those not familiar with lambdas.
+        std::for_each(single_element_list.begin(), single_element_list.end(),
             [&multiply_visitor](AbstractElement &element)
             {
                 element.Accept(multiply_visitor);
@@ -471,12 +473,12 @@ int main(int argc, char *argv[])
 
     try
     {
-        /*for(auto element : single_element_list)
-        {
-            element.Accept(xor_visitor);
-        }*/
-        ForEachAdapter adapter(xor_visitor);
-        std::for_each(single_element_list.begin(), single_element_list.end(), adapter);
+        std::for_each(single_element_list.begin(), single_element_list.end(),
+            [&xor_visitor](AbstractElement &element)
+            {
+                element.Accept(xor_visitor);
+            }
+        );
     }
     catch(const std::runtime_error &e)
     {
