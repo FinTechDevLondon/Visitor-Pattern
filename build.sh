@@ -1,0 +1,1 @@
+g++ -std=c++20 -fmax-errors=1 main.cpp -o a.out
